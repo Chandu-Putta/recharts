@@ -170,9 +170,7 @@ interface DrawArcOptions {
 
 const defaultTextProps = {
   fontWeight: 'bold',
-  paintOrder: 'stroke fill',
   fontSize: '.75rem',
-  stroke: '#FFF',
   fill: 'black',
   pointerEvents: 'none',
 };
@@ -268,19 +266,16 @@ type SunburstThemeStyles = {
 };
 
 /**
- * Label props from the theme. Explicit `textOptions` are applied on top of these.
- *
- * The label text takes the `typography` styles, which the Text component reads from the theme itself.
- * The label sits on top of the sector, so it gets a halo in the `pageBackground` color,
- * which keeps it readable on any sector color.
- * @param themeStyles styles from the theme
+ * Resolves the stroke color for the label halo: an explicit `textOptions.stroke` wins,
+ * otherwise it's the chart's effective page background (white without a theme).
+ * Returns undefined when there is no color to halo with, so no halo is drawn at all -
+ * matching the legacy behavior of omitting both `stroke` and `paint-order` in that case.
  */
-function getThemedTextProps(themeStyles: SunburstThemeStyles): TextProps {
-  const { pageBackground } = themeStyles;
-  return {
-    pointerEvents: 'none',
-    ...(pageBackground == null ? {} : { stroke: pageBackground, paintOrder: 'stroke fill' }),
-  };
+function resolveLabelHaloStroke(
+  pageBackground: string | undefined,
+  textOptions: TextProps | undefined,
+): string | undefined {
+  return textOptions?.stroke ?? pageBackground;
 }
 
 export const defaultSunburstChartProps = {
@@ -391,8 +386,19 @@ const SunburstChartImpl = ({
     );
   }
 
-  const labelProps: TextProps | undefined =
-    themeStyles == null ? textOptions : { ...getThemedTextProps(themeStyles), ...textOptions };
+  /*
+   * The label sits on top of the sector, so it gets a halo in the page background color
+   * (white without a theme), which keeps it readable on any sector color. An explicit
+   * `textOptions.stroke` or `textOptions.halo` overrides this default.
+   */
+  const pageBackground = themeStyles == null ? '#FFF' : themeStyles.pageBackground;
+  const haloStroke = resolveLabelHaloStroke(pageBackground, textOptions);
+  const labelProps: TextProps = {
+    ...(themeStyles == null ? textOptions : { pointerEvents: 'none', ...textOptions }),
+    ...(textOptions?.halo === undefined && haloStroke != null
+      ? { halo: { stroke: haloStroke, strokeWidth: 1, strokeLinejoin: 'miter' } }
+      : {}),
+  };
 
   /**
    * Resolves the styles of a single sector.
