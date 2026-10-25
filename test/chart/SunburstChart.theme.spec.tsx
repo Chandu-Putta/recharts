@@ -151,6 +151,33 @@ describe('<SunburstChart /> theme', () => {
     expect(label).toHaveAttribute('font-size', '10');
   });
 
+  it.each([
+    { name: 'without a theme', activeTheme: undefined },
+    { name: 'with a theme', activeTheme: theme },
+  ])('draws the label halo with a 1px miter stroke, $name', ({ activeTheme }) => {
+    const { container } = renderSunburst(activeTheme);
+    const label = getFirstLabel(container);
+    expect(label).toHaveAttribute('stroke-width', '1');
+    expect(label).toHaveAttribute('stroke-linejoin', 'miter');
+  });
+
+  it('lets textOptions.halo fully replace the default halo', () => {
+    const { container } = renderSunburst(theme, {
+      textOptions: { halo: { stroke: 'red', strokeWidth: 5, strokeLinejoin: 'round' } },
+    });
+    const label = getFirstLabel(container);
+    expect(label).toHaveAttribute('stroke', 'red');
+    expect(label).toHaveAttribute('stroke-width', '5');
+    expect(label).toHaveAttribute('stroke-linejoin', 'round');
+  });
+
+  it('lets textOptions.halo disable the halo entirely', () => {
+    const { container } = renderSunburst(theme, { textOptions: { halo: false } });
+    const label = getFirstLabel(container);
+    expect(label).not.toHaveAttribute('stroke');
+    expect(label).not.toHaveAttribute('paint-order');
+  });
+
   it('ignores the theme for sectors that define their own styles in data, and their children inherit the color', () => {
     const { container } = renderSunburst(theme, {
       data: {
